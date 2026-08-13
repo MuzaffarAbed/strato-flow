@@ -69,9 +69,9 @@ export const workItemsApi = {
   delete: (id: number) => del<boolean>(`/workitems/${id}`),
   getKanban: () => get<KanbanColumn[]>('/workitems/kanban'),
   updateStatus: (id: number, statusId: number) =>
-    put<boolean>(`/workitems/${id}/status`, { statusId }),
+    post<boolean>(`/workitems/${id}/status`, { statusId }),
   updateKanbanStatus: (workItemId: number, newStatusId: number) =>
-    put<boolean>('/workitems/kanban/status', { workItemId, newStatusId }),
+    post<boolean>('/workitems/kanban/status', { workItemId, newStatusId }),
   bulkUpdate: (data: { workItemIds: number[]; statusId?: number; priorityId?: number; assignedToId?: number }) =>
     post<boolean>('/workitems/bulk-update', data),
 };
