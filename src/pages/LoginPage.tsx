@@ -4,8 +4,8 @@ import { useAuth } from '../contexts/AuthContext';
 import stratoLogo from '../assets/strato_logo_clean.png';
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('admin@stratoflow.com');
-  const [password, setPassword] = useState('Admin@123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [isRegister, setIsRegister] = useState(false);
