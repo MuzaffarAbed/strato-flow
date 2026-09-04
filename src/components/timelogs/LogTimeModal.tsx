@@ -1,10 +1,13 @@
-import type { TimeLogFormState } from '../../utils/timeLogForm';
-
+import type { Task } from '../../types';import type { TimeLogFormState } from '../../utils/timeLogForm';
+import { ENTRY_TYPES, formDurationHours } from '../../utils/timeLogForm';
+import { formatDuration } from '../../utils/timesheetUtils';
+import TaskPicker from './TaskPicker';
 interface LogTimeModalProps {
   open: boolean;
   title: string;
   form: TimeLogFormState;
-  tasks: { id: number; taskTitle: string; workItemNumber: string }[];
+  tasks: Task[];
+  tasksLoading?: boolean;
   loading?: boolean;
   error?: string;
   onChange: (form: TimeLogFormState) => void;
@@ -17,6 +20,7 @@ export default function LogTimeModal({
   title,
   form,
   tasks,
+  tasksLoading,
   loading,
   error,
   onChange,
@@ -24,9 +28,9 @@ export default function LogTimeModal({
   onCancel,
 }: LogTimeModalProps) {
   if (!open) return null;
-
   const inputClass = 'w-full bg-background border border-border rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-primary';
   const labelClass = 'block text-sm text-gray-400 mb-1';
+  const duration = formDurationHours(form);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,7 +39,7 @@ export default function LogTimeModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <div className="bg-card border border-border rounded-xl p-6 max-w-md w-full shadow-xl">
+      <div className="bg-card border border-border rounded-xl p-6 max-w-xl w-full shadow-xl max-h-[90vh] overflow-y-auto">
         <h3 className="text-lg font-semibold text-primary mb-4">{title}</h3>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -44,36 +48,28 @@ export default function LogTimeModal({
           )}
 
           <div>
-            <label className={labelClass}>Task *</label>
+            <label className={labelClass}>Entry Type</label>
             <select
               className={inputClass}
-              value={form.taskId || ''}
-              onChange={(e) => onChange({ ...form, taskId: +e.target.value })}
-              required
+              value={form.entryType}
+              onChange={(e) => onChange({ ...form, entryType: e.target.value as TimeLogFormState['entryType'] })}
             >
-              <option value="">Select task...</option>
-              {tasks.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.workItemNumber} — {t.taskTitle}
-                </option>
+              {ENTRY_TYPES.filter((type) => type !== 'Timer').map((type) => (
+                <option key={type} value={type}>{type}</option>
               ))}
             </select>
           </div>
 
           <div>
-            <label className={labelClass}>Hours Worked *</label>
-            <input
-              type="number"
-              min="0.25"
-              max="24"
-              step="0.25"
-              className={inputClass}
-              value={form.hours}
-              onChange={(e) => onChange({ ...form, hours: +e.target.value })}
-              required
+            <label className={labelClass}>Task *</label>
+            <TaskPicker
+              tasks={tasks}
+              value={form.taskId}
+              loading={tasksLoading}
+              disabled={loading}
+              onChange={(taskId) => onChange({ ...form, taskId })}
             />
           </div>
-
           <div>
             <label className={labelClass}>Work Date *</label>
             <input
@@ -84,6 +80,35 @@ export default function LogTimeModal({
               required
             />
           </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelClass}>Start Time *</label>
+              <input
+                type="time"
+                className={inputClass}
+                value={form.startTime}
+                onChange={(e) => onChange({ ...form, startTime: e.target.value })}
+                required
+              />
+            </div>
+            <div>
+              <label className={labelClass}>End Time *</label>
+              <input
+                type="time"
+                className={inputClass}
+                value={form.endTime}
+                onChange={(e) => onChange({ ...form, endTime: e.target.value })}
+                required
+              />
+            </div>
+          </div>
+
+          {duration > 0 && (
+            <p className="text-sm text-gray-500">
+              Duration: <span className="font-medium text-primary">{formatDuration(duration)}</span>
+            </p>
+          )}
 
           <div>
             <label className={labelClass}>Notes</label>
@@ -99,7 +124,7 @@ export default function LogTimeModal({
             <button type="button" onClick={onCancel} disabled={loading} className="px-4 py-2 text-sm border border-border rounded-lg hover:border-primary">
               Cancel
             </button>
-            <button type="submit" disabled={loading} className="px-4 py-2 text-sm bg-primary text-background rounded-lg font-medium disabled:opacity-50">
+            <button type="submit" disabled={loading || tasksLoading} className="px-4 py-2 text-sm bg-primary text-background rounded-lg font-medium disabled:opacity-50">
               {loading ? 'Saving...' : 'Save'}
             </button>
           </div>

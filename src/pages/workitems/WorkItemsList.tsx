@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { FiPlus, FiDownload } from 'react-icons/fi';
+import { FiPlus, FiDownload, FiX } from 'react-icons/fi';
 import DataTable, { type DataTableColumn } from '../../components/common/DataTable';
+import MultiSelectFilter from '../../components/common/MultiSelectFilter';
 import TableRowActions from '../../components/common/TableRowActions';
 import { workItemsApi } from '../../services/stratoApi';
 import { useWorkItemLookups } from '../../hooks/useWorkItemLookups';
@@ -30,13 +31,18 @@ const formatDate = (value?: string | null) => (value ? value.slice(0, 10) : '—
 
 export default function WorkItemsList() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
 
+  const projectIdFromUrl = Number(searchParams.get('projectId'));
+  const initialProjectId = !Number.isNaN(projectIdFromUrl) && projectIdFromUrl > 0 ? projectIdFromUrl : '';
+
   const [search, setSearch] = useState('');
-  const [statusId, setStatusId] = useState<number | ''>('');
+  const [statusIds, setStatusIds] = useState<number[]>([]);
   const [priorityId, setPriorityId] = useState<number | ''>('');
   const [assignedToId, setAssignedToId] = useState<number | ''>('');
   const [typeId, setTypeId] = useState<number | ''>('');
+  const [projectId, setProjectId] = useState<number | ''>(initialProjectId);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [sortBy, setSortBy] = useState('createdAt');
@@ -44,19 +50,40 @@ export default function WorkItemsList() {
   const [deleteTarget, setDeleteTarget] = useState<WorkItem | null>(null);
   const [deleteError, setDeleteError] = useState('');
 
-  const { statuses, priorities, workItemTypes, users } = useWorkItemLookups();
+  const { statuses, priorities, workItemTypes, projects, users } = useWorkItemLookups();
+
+  const assigneesSorted = useMemo(
+    () => [...users].sort((a, b) => a.fullName.localeCompare(b.fullName, undefined, { sensitivity: 'base' })),
+    [users],
+  );
+
+  useEffect(() => {
+    const nextProjectId = Number(searchParams.get('projectId'));
+    setProjectId(!Number.isNaN(nextProjectId) && nextProjectId > 0 ? nextProjectId : '');
+  }, [searchParams]);
 
   const filterParams = useMemo(() => ({
     search: search.trim() || undefined,
-    statusId: statusId || undefined,
+    statusIds: statusIds.length > 0 ? statusIds : undefined,
     priorityId: priorityId || undefined,
     assignedToId: assignedToId || undefined,
     workItemTypeId: typeId || undefined,
-  }), [search, statusId, priorityId, assignedToId, typeId]);
+    projectId: projectId || undefined,
+  }), [search, statusIds, priorityId, assignedToId, typeId, projectId]);
 
   useEffect(() => {
     setPage(1);
   }, [filterParams]);
+
+  const selectedProject = projects.find((project) => project.id === projectId);
+
+  const updateProjectFilter = (nextProjectId: number | '') => {
+    setProjectId(nextProjectId);
+    const nextParams = new URLSearchParams(searchParams);
+    if (nextProjectId) nextParams.set('projectId', String(nextProjectId));
+    else nextParams.delete('projectId');
+    setSearchParams(nextParams, { replace: true });
+  };
 
   const { data, isLoading, isFetching, error } = useQuery({
     queryKey: ['workitems', page, pageSize, sortBy, sortDescending, filterParams],
@@ -97,9 +124,11 @@ export default function WorkItemsList() {
     const base = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
     const params = new URLSearchParams({ format: 'csv' });
     if (search) params.set('search', search);
-    if (statusId) params.set('statusId', String(statusId));
+    if (statusIds.length) statusIds.forEach((id) => params.append('statusIds', String(id)));
     if (priorityId) params.set('priorityId', String(priorityId));
     if (assignedToId) params.set('assignedToId', String(assignedToId));
+    if (projectId) params.set('projectId', String(projectId));
+    if (typeId) params.set('workItemTypeId', String(typeId));
     fetch(`${base}/workitems/export?${params}`, { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => r.blob())
       .then((blob) => {
@@ -117,6 +146,16 @@ export default function WorkItemsList() {
   const columns: DataTableColumn<WorkItem>[] = [
     { key: 'workItemNumber', header: 'Number', width: '120px', sortable: true },
     { key: 'title', header: 'Title', sortable: true },
+    {
+      key: 'projectName',
+      header: 'Project',
+      width: '180px',
+      render: (row) => (
+        <span className="text-sm" title={row.projectName || 'No project'}>
+          {row.projectName?.trim() || '—'}
+        </span>
+      ),
+    },
     { key: 'workItemTypeName', header: 'Type', width: '120px' },
     { key: 'statusName', header: 'Status', width: '140px', sortable: true },
     { key: 'priorityName', header: 'Priority', width: '100px', sortable: true },
@@ -142,7 +181,11 @@ export default function WorkItemsList() {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">Work Items</h1>
-          <p className="text-gray-500 text-sm">Manage features, bugs, support requests, and more</p>
+          <p className="text-gray-500 text-sm">
+            {selectedProject
+              ? `Showing work items for ${selectedProject.name}`
+              : 'Manage features, bugs, support requests, and more'}
+          </p>
         </div>
         <div className="flex gap-2">
           <button type="button" onClick={handleExport} className="flex items-center gap-2 px-4 py-2 border border-border rounded-lg hover:border-primary text-sm">
@@ -154,7 +197,22 @@ export default function WorkItemsList() {
         </div>
       </div>
 
-      <div className="bg-card border border-border rounded-xl p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+      {selectedProject && (
+        <div className="flex flex-wrap items-center justify-between gap-3 bg-primary/10 border border-primary/30 rounded-xl px-4 py-3">
+          <p className="text-sm">
+            Filtered by project: <span className="font-semibold text-primary">{selectedProject.name}</span>
+          </p>
+          <button
+            type="button"
+            onClick={() => updateProjectFilter('')}
+            className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
+          >
+            <FiX size={14} /> Clear project filter
+          </button>
+        </div>
+      )}
+
+      <div className="bg-card border border-border rounded-xl p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
         <input
           type="search"
           placeholder="Search by title..."
@@ -162,17 +220,28 @@ export default function WorkItemsList() {
           onChange={(e) => setSearch(e.target.value)}
           className="bg-background border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary"
         />
-        <select value={statusId} onChange={(e) => setStatusId(e.target.value ? +e.target.value : '')} className="bg-background border border-border rounded-lg px-3 py-2 text-sm">
-          <option value="">All Statuses</option>
-          {statuses.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+        <select
+          value={projectId}
+          onChange={(e) => updateProjectFilter(e.target.value ? +e.target.value : '')}
+          className="bg-background border border-border rounded-lg px-3 py-2 text-sm"
+        >
+          <option value="">All Projects</option>
+          {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
         </select>
+        <MultiSelectFilter
+          label="Statuses"
+          allLabel="All Statuses"
+          options={statuses.map((s) => ({ id: s.id, name: s.name }))}
+          value={statusIds}
+          onChange={setStatusIds}
+        />
         <select value={priorityId} onChange={(e) => setPriorityId(e.target.value ? +e.target.value : '')} className="bg-background border border-border rounded-lg px-3 py-2 text-sm">
           <option value="">All Priorities</option>
           {priorities.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
         </select>
         <select value={assignedToId} onChange={(e) => setAssignedToId(e.target.value ? +e.target.value : '')} className="bg-background border border-border rounded-lg px-3 py-2 text-sm">
           <option value="">All Assignees</option>
-          {users.map((u) => <option key={u.id} value={u.id}>{u.fullName}</option>)}
+          {assigneesSorted.map((u) => <option key={u.id} value={u.id}>{u.fullName}</option>)}
         </select>
         <select value={typeId} onChange={(e) => setTypeId(e.target.value ? +e.target.value : '')} className="bg-background border border-border rounded-lg px-3 py-2 text-sm">
           <option value="">All Types</option>
@@ -190,7 +259,7 @@ export default function WorkItemsList() {
           data={data?.items ?? []}
           rowKey={(row) => row.id}
           loading={isLoading || isFetching}
-          emptyMessage="No work items found"
+          emptyMessage={selectedProject ? `No work items found for ${selectedProject.name}` : 'No work items found'}
           onRowClick={(row) => navigate(`/work-items/${row.id}`)}
           sortBy={sortColumn}
           sortDescending={sortDescending}

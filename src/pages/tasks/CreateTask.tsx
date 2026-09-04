@@ -4,12 +4,14 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { FiArrowLeft } from 'react-icons/fi';
 import { tasksApi } from '../../services/stratoApi';
 import { useTaskLookups } from '../../hooks/useTaskLookups';
+import { useAuth } from '../../contexts/AuthContext';
 import TaskForm from '../../components/tasks/TaskForm';
 import { emptyTaskForm, toCreatePayload } from '../../utils/taskForm';
 import { getApiErrorMessage } from '../../utils/apiError';
 
 export default function CreateTask() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [searchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const [form, setForm] = useState(emptyTaskForm());
@@ -31,7 +33,12 @@ export default function CreateTask() {
     mutationFn: () => tasksApi.create(toCreatePayload(form)),
     onSuccess: (task) => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
-      navigate(`/tasks/${task.id}`);
+      const assignedUserIds = form.assignedUserIds ?? [];
+      const assignedToSelf =
+        (form.assignedToId != null && form.assignedToId === user?.id) ||
+        assignedUserIds.includes(user?.id ?? 0);
+
+      navigate(assignedToSelf ? `/tasks/${task.id}` : '/tasks');
     },
     onError: (err) => setError(getApiErrorMessage(err, 'Failed to create task. Please check required fields.')),
   });

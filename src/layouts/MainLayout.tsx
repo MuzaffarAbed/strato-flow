@@ -4,9 +4,12 @@ import {
   FiBarChart2, FiUsers, FiBell, FiSettings, FiUser, FiLogOut, FiList, FiClock, FiShield,
 } from 'react-icons/fi';
 import { useAuth } from '../contexts/AuthContext';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { notificationsApi } from '../services/stratoApi';
 import { useState } from 'react';
+import NotificationToasts from '../components/notifications/NotificationToasts';
+import { useNotificationPollingInterval } from '../contexts/NotificationContext';
+import type { Notification } from '../types';
 
 const navItems = [
   { to: '/', icon: FiHome, label: 'Dashboard' },
@@ -26,17 +29,34 @@ const navItems = [
   { to: '/profile', icon: FiUser, label: 'Profile' },
 ];
 
+function formatNotificationTime(value: string) {
+  const date = new Date(value);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+
+  if (diffMins < 1) return 'Just now';
+  if (diffMins < 60) return `${diffMins}m ago`;
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return `${diffHours}h ago`;
+  return date.toLocaleDateString();
+}
+
 export default function MainLayout() {
   const { user, logout } = useAuth();
   const isAdmin = user?.roleName?.toLowerCase() === 'admin';
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [showNotifications, setShowNotifications] = useState(false);
+  const pollingInterval = useNotificationPollingInterval();
 
   const { data: unreadCount = 0 } = useQuery({
     queryKey: ['notifications', 'unread-count'],
     queryFn: () => notificationsApi.getUnreadCount(),
-    refetchInterval: 30000,
+    refetchInterval: pollingInterval,
+    refetchOnWindowFocus: true,
+    staleTime: 0,
   });
 
   const { data: notifications = [] } = useQuery({
@@ -45,13 +65,36 @@ export default function MainLayout() {
     enabled: showNotifications,
   });
 
+  const markReadMutation = useMutation({
+    mutationFn: (id: number) => notificationsApi.markAsRead(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+    },
+  });
+
   const handleLogout = () => {
     logout();
     navigate('/login');
   };
 
+  const openNotification = (notification: Notification) => {
+    if (!notification.isRead)
+      markReadMutation.mutate(notification.id);
+
+    setShowNotifications(false);
+
+    if (notification.relatedEntityType === 'Task' && notification.relatedEntityId) {
+      navigate(`/tasks/${notification.relatedEntityId}`);
+      return;
+    }
+
+    navigate('/notifications');
+  };
+
   return (
     <div className="flex min-h-screen bg-background">
+      <NotificationToasts />
+
       <aside className={`${sidebarOpen ? 'w-64' : 'w-16'} bg-card border-r border-border transition-all duration-300 flex flex-col`}>
         <div className="p-4 border-b border-border">
           <div className="flex items-center gap-3">
@@ -105,6 +148,7 @@ export default function MainLayout() {
               <button
                 onClick={() => setShowNotifications(!showNotifications)}
                 className="relative p-2 text-gray-600 hover:text-primary transition-colors"
+                aria-label="Notifications"
               >
                 <FiBell className="w-5 h-5" />
                 {unreadCount > 0 && (
@@ -114,17 +158,36 @@ export default function MainLayout() {
                 )}
               </button>
               {showNotifications && (
-                <div className="absolute right-0 top-full mt-2 w-80 bg-card border border-border rounded-lg shadow-xl z-50">
-                  <div className="p-3 border-b border-border font-medium text-primary">Notifications</div>
-                  <div className="max-h-64 overflow-y-auto">
+                <div className="absolute right-0 top-full mt-2 w-96 bg-card border border-border rounded-xl shadow-xl z-50 overflow-hidden">
+                  <div className="p-3 border-b border-border flex items-center justify-between">
+                    <span className="font-medium text-primary">Notifications</span>
+                    <button
+                      type="button"
+                      onClick={() => navigate('/notifications')}
+                      className="text-xs text-gray-500 hover:text-primary"
+                    >
+                      View all
+                    </button>
+                  </div>
+                  <div className="max-h-80 overflow-y-auto">
                     {notifications.length === 0 ? (
                       <p className="p-4 text-gray-500 text-sm text-center">No unread notifications</p>
                     ) : (
                       notifications.map((n) => (
-                        <div key={n.id} className="p-3 border-b border-border/50 hover:bg-border/30">
-                          <p className="text-sm font-medium">{n.title}</p>
-                          <p className="text-xs text-gray-500 mt-1">{n.message}</p>
-                        </div>
+                        <button
+                          key={n.id}
+                          type="button"
+                          onClick={() => openNotification(n)}
+                          className="w-full text-left p-3 border-b border-border/50 hover:bg-border/30 transition-colors"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium text-gray-900">{n.title}</p>
+                              <p className="text-xs text-gray-500 mt-1 line-clamp-2">{n.message}</p>
+                            </div>
+                            <span className="text-[10px] text-gray-400 shrink-0">{formatNotificationTime(n.createdAt)}</span>
+                          </div>
+                        </button>
                       ))
                     )}
                   </div>

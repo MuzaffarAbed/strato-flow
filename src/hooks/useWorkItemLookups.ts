@@ -8,8 +8,8 @@ export function useWorkItemLookups() {
   });
 
   const users = useQuery({
-    queryKey: ['users'],
-    queryFn: () => usersApi.getAll(),
+    queryKey: ['users', 'lookup'],
+    queryFn: () => usersApi.getLookup(),
   });
 
   return {

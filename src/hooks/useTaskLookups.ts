@@ -8,8 +8,8 @@ export function useTaskLookups() {
   });
 
   const users = useQuery({
-    queryKey: ['users'],
-    queryFn: () => usersApi.getAll(),
+    queryKey: ['users', 'lookup'],
+    queryFn: () => usersApi.getLookup(),
   });
 
   const workItems = useQuery({

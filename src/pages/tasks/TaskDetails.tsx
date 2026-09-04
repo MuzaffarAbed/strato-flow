@@ -56,10 +56,19 @@ export default function TaskDetails() {
           <Link to="/tasks" className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-primary mb-2">
             <FiArrowLeft /> Back to Tasks
           </Link>
-          <Link to={`/work-items/${task.workItemId}`} className="text-primary text-sm hover:underline block">
-            {task.workItemNumber} — {task.workItemTitle}
+          <Link to={`/work-items/${task.workItemId}`} className="block group">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-primary text-sm font-semibold group-hover:underline">{task.workItemNumber}</span>
+              {task.workItemTypeName && (
+                <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-border/60 text-gray-600">
+                  {task.workItemTypeName}
+                </span>
+              )}
+            </div>
+            <p className="text-sm text-gray-700 mt-0.5 group-hover:text-primary">{task.workItemTitle}</p>
+            <p className="text-xs text-gray-500 mt-0.5">{task.projectName?.trim() || 'No project'}</p>
           </Link>
-          <h1 className="text-2xl font-bold mt-1">{task.taskTitle}</h1>
+          <h1 className="text-2xl font-bold mt-2">{task.taskTitle}</h1>
         </div>
         <div className="flex gap-2">
           <button type="button" onClick={() => navigate(`/tasks/${task.id}/edit`)} className="flex items-center gap-2 px-4 py-2 border border-border rounded-lg hover:border-primary text-sm">
@@ -73,6 +82,9 @@ export default function TaskDetails() {
 
       <div className="bg-card border border-border rounded-xl p-6">
         <dl>
+          <DetailRow label="Work Item" value={`${task.workItemNumber} — ${task.workItemTitle}`} />
+          <DetailRow label="Work Item Type" value={task.workItemTypeName} />
+          <DetailRow label="Project" value={task.projectName} />
           <DetailRow label="Status" value={task.statusName} />
           <DetailRow label="Priority" value={task.priorityName} />
           <DetailRow label="Assigned To" value={task.assignedToName} />

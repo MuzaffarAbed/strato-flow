@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { reportsApi } from '../services/stratoApi';
+import TimesheetReport from '../components/reports/TimesheetReport';
 
 const reportTypes = [
+  { id: 'timesheet', label: 'Timesheet Report' },
   { id: 'workitems-by-status', label: 'Work Items by Status' },
   { id: 'workitems-by-priority', label: 'Work Items by Priority' },
   { id: 'hours-by-user', label: 'Hours Logged by User' },
@@ -11,11 +13,12 @@ const reportTypes = [
 ];
 
 export default function ReportsPage() {
-  const [selectedReport, setSelectedReport] = useState('workitems-by-status');
+  const [selectedReport, setSelectedReport] = useState('timesheet');
 
   const { data, isLoading } = useQuery({
     queryKey: ['reports', selectedReport],
     queryFn: () => reportsApi.getReport(selectedReport),
+    enabled: selectedReport !== 'timesheet',
   });
 
   const reportData = data as { reportName?: string; rows?: Record<string, unknown>[]; chartData?: { label: string; value: number }[] };
@@ -41,6 +44,9 @@ export default function ReportsPage() {
         ))}
       </div>
 
+      {selectedReport === 'timesheet' ? (
+        <TimesheetReport />
+      ) : (
       <div className="bg-card border border-border rounded-xl p-6">
         {isLoading ? (
           <div className="flex justify-center p-8"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>
@@ -89,6 +95,7 @@ export default function ReportsPage() {
           </>
         )}
       </div>
+      )}
     </div>
   );
 }

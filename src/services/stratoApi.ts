@@ -62,7 +62,25 @@ export const dashboardApi = {
 };
 
 export const workItemsApi = {
-  getAll: (params?: WorkItemFilterParams) => get<PagedResult<WorkItem>>('/workitems', params as Record<string, unknown>),
+  getAll: (params?: WorkItemFilterParams) => {
+    const query: Record<string, unknown> = { ...params };
+
+    if (params?.statusIds?.length) {
+      query.statusIds = params.statusIds;
+      delete query.statusId;
+    } else {
+      delete query.statusIds;
+    }
+
+    return api
+      .get<ApiResponse<PagedResult<WorkItem>>>('/workitems', {
+        params: query,
+        paramsSerializer: {
+          indexes: null,
+        },
+      })
+      .then(unwrap);
+  },
   getById: (id: number) => get<WorkItem>(`/workitems/${id}`),
   create: (data: CreateWorkItemDto) => post<WorkItem>('/workitems', data),
   update: (id: number, data: UpdateWorkItemDto) => put<WorkItem>(`/workitems/${id}`, data),
@@ -77,7 +95,32 @@ export const workItemsApi = {
 };
 
 export const tasksApi = {
-  getAll: (params?: TaskFilterParams) => get<PagedResult<Task>>('/tasks', params as Record<string, unknown>),
+  getAll: (params?: TaskFilterParams) => {
+    const query: Record<string, unknown> = { ...params };
+
+    if (params?.statusIds?.length) {
+      query.statusIds = params.statusIds;
+      delete query.statusId;
+    } else {
+      delete query.statusIds;
+    }
+
+    if (params?.priorityIds?.length) {
+      query.priorityIds = params.priorityIds;
+      delete query.priorityId;
+    } else {
+      delete query.priorityIds;
+    }
+
+    return api
+      .get<ApiResponse<PagedResult<Task>>>('/tasks', {
+        params: query,
+        paramsSerializer: {
+          indexes: null,
+        },
+      })
+      .then(unwrap);
+  },
   getById: (id: number) => get<Task>(`/tasks/${id}`),
   create: (data: CreateTaskDto) => post<Task>('/tasks', data),
   update: (id: number, data: UpdateTaskDto) => put<Task>(`/tasks/${id}`, data),
@@ -144,6 +187,7 @@ export const lookupsApi = {
 export const usersApi = {
   getAll: (params?: { activeOnly?: boolean }) =>
     get<UserDetail[]>('/users', params as Record<string, unknown>),
+  getLookup: () => get<User[]>('/users/lookup'),
   getById: (id: number) => get<UserDetail>(`/users/${id}`),
   create: (data: CreateUserDto) => post<UserDetail>('/users', data),
   update: (id: number, data: UpdateUserDto) => put<UserDetail>(`/users/${id}`, data),
@@ -161,8 +205,14 @@ export const rolesApi = {
 export const timeLogsApi = {
   getAll: (params?: TimeLogFilterParams) => get<TimeLog[]>('/timelogs', params as Record<string, unknown>),
   getById: (id: number) => get<TimeLog>(`/timelogs/${id}`),
+  getRunning: () => get<TimeLog | null>('/timelogs/running'),
   getSummary: (params?: TimeLogFilterParams) => get<TimeLogSummary>('/timelogs/summary', params as Record<string, unknown>),
   create: (data: CreateTimeLogDto) => post<TimeLog>('/timelogs', data),
   update: (id: number, data: UpdateTimeLogDto) => put<TimeLog>(`/timelogs/${id}`, data),
   delete: (id: number) => del<boolean>(`/timelogs/${id}`),
+  startTimer: (data: { taskId: number; description?: string; entryType?: string }) =>
+    post<TimeLog>('/timelogs/start', data),
+  stopTimer: (id: number) => post<TimeLog>(`/timelogs/${id}/stop`),
+  duplicate: (id: number) => post<TimeLog>(`/timelogs/${id}/duplicate`),
+  duplicateAndStart: (id: number) => post<TimeLog>(`/timelogs/${id}/duplicate-start`),
 };

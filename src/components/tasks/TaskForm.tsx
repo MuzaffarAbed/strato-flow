@@ -7,7 +7,7 @@ interface TaskFormProps {
   priorities: { id: number; name: string }[];
   statuses: { id: number; name: string }[];
   users: { id: number; fullName: string }[];
-  workItems: { id: number; workItemNumber: string; title: string }[];
+  workItems: { id: number; workItemNumber: string; title: string; projectName?: string; workItemTypeName?: string }[];
 }
 
 export default function TaskForm({
@@ -48,7 +48,11 @@ export default function TaskForm({
         >
           <option value="">Select work item...</option>
           {workItems.map((w) => (
-            <option key={w.id} value={w.id}>{w.workItemNumber} — {w.title}</option>
+            <option key={w.id} value={w.id}>
+              {w.workItemNumber} — {w.title}
+              {w.workItemTypeName ? ` [${w.workItemTypeName}]` : ''}
+              {w.projectName ? ` · ${w.projectName}` : ''}
+            </option>
           ))}
         </select>
       </div>

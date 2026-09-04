@@ -105,6 +105,7 @@ export interface WorkItemFilterParams {
   sortBy?: string;
   sortDescending?: boolean;
   statusId?: number;
+  statusIds?: number[];
   priorityId?: number;
   assignedToId?: number;
   projectId?: number;
@@ -249,6 +250,9 @@ export interface Task {
   workItemId: number;
   workItemNumber: string;
   workItemTitle: string;
+  projectId?: number;
+  projectName?: string;
+  workItemTypeName?: string;
   taskTitle: string;
   taskDescription?: string;
   assignedToId?: number;
@@ -293,8 +297,11 @@ export interface TaskFilterParams {
   workItemId?: number;
   assignedToId?: number;
   statusId?: number;
+  statusIds?: number[];
   priorityId?: number;
+  priorityIds?: number[];
   blockedOnly?: boolean;
+  excludeCompleted?: boolean;
 }
 
 export interface Project {
@@ -333,6 +340,8 @@ export interface Notification {
   title: string;
   message: string;
   isRead: boolean;
+  relatedEntityId?: number;
+  relatedEntityType?: string;
   createdAt: string;
 }
 
@@ -369,11 +378,26 @@ export interface LookupDto {
   sortOrder?: number;
 }
 
+export interface TaskBlocker {
+  id: number;
+  taskId: number;
+  taskTitle: string;
+  workItemNumber: string;
+  blockedReason: string;
+  blockedById: number;
+  blockedByName: string;
+  blockedDate: string;
+  resolvedDate?: string;
+  resolvedById?: number;
+  resolvedByName?: string;
+  isResolved: boolean;
+}
+
 export interface MyWorkData {
   assignedWorkItems: WorkItem[];
   assignedTasks: Task[];
   overdueWork: WorkItem[];
-  blockedWork: unknown[];
+  blockedWork: TaskBlocker[];
   recentTimeLogs: TimeLog[];
   totalHoursThisWeek: number;
 }
@@ -384,14 +408,21 @@ export interface TimeLog {
   taskTitle: string;
   workItemId: number;
   workItemNumber: string;
+  workItemTitle?: string;
   projectId?: number;
   projectName?: string;
   userId: number;
   userName: string;
   hours: number;
+  effectiveHours: number;
   logDate: string;
   description?: string;
   createdAt: string;
+  startedAt?: string;
+  endedAt?: string;
+  isRunning: boolean;
+  entryType?: string;
+  sourceTimeLogId?: number;
 }
 
 export interface CreateTimeLogDto {
@@ -399,6 +430,9 @@ export interface CreateTimeLogDto {
   hours: number;
   logDate: string;
   description?: string;
+  entryType?: string;
+  startedAt?: string;
+  endedAt?: string;
 }
 
 export interface UpdateTimeLogDto {
@@ -406,6 +440,15 @@ export interface UpdateTimeLogDto {
   hours: number;
   logDate: string;
   description?: string;
+  entryType?: string;
+  startedAt?: string;
+  endedAt?: string;
+}
+
+export interface StartTimeLogTimerDto {
+  taskId: number;
+  description?: string;
+  entryType?: string;
 }
 
 export interface TimeLogFilterParams {

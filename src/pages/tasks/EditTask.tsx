@@ -84,7 +84,14 @@ export default function EditTask() {
         <Link to={`/tasks/${taskId}`} className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-primary mb-2">
           <FiArrowLeft /> Back to Details
         </Link>
-        <p className="text-primary text-sm">{task.workItemNumber}</p>
+        <Link to={`/work-items/${task.workItemId}`} className="block mb-1 group">
+          <p className="text-primary text-sm font-semibold group-hover:underline">
+            {task.workItemNumber} — {task.workItemTitle}
+          </p>
+          <p className="text-xs text-gray-500">
+            {[task.workItemTypeName, task.projectName].filter(Boolean).join(' · ') || 'No project'}
+          </p>
+        </Link>
         <h1 className="text-2xl font-bold">Edit Task</h1>
       </div>
 

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { FiPlus, FiEdit2, FiTrash2 } from 'react-icons/fi';
 import { projectsApi } from '../services/stratoApi';
@@ -19,6 +20,7 @@ import type { CreateProjectDto, Project } from '../types';
 const statusOptions = ['Active', 'On Hold', 'Completed', 'Cancelled'] as const;
 
 export default function ProjectsPage() {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [modalOpen, setModalOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Project | null>(null);
@@ -43,6 +45,9 @@ export default function ProjectsPage() {
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: ['projects'] });
 
+  const openProjectWorkItems = (project: Project) => {
+    navigate(`/work-items?projectId=${project.id}`);
+  };
   const closeModal = () => {
     setModalOpen(false);
     setEditTarget(null);
@@ -173,7 +178,20 @@ export default function ProjectsPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {projects.map((p) => (
-            <div key={p.id} className="bg-card border border-border rounded-xl p-5 hover:border-primary/30 transition-colors">
+            <div
+              key={p.id}
+              role="button"
+              tabIndex={0}
+              onClick={() => openProjectWorkItems(p)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  openProjectWorkItems(p);
+                }
+              }}
+              className="bg-card border border-border rounded-xl p-5 hover:border-primary/50 hover:shadow-md transition-all cursor-pointer text-left"
+              aria-label={`View work items for ${p.projectName}`}
+            >
               <div className="flex justify-between items-start mb-3">
                 <h3 className="font-semibold text-lg">{p.projectName}</h3>
                 <span className="text-xs bg-primary/20 text-primary px-2 py-1 rounded">{p.status}</span>
@@ -189,17 +207,25 @@ export default function ProjectsPage() {
                 </div>
                 <p className="text-xs text-gray-500 text-right">{Math.round(p.progressPercent)}% complete</p>
               </div>
+              <p className="text-xs text-primary mt-3">Click to view work items</p>
               <div className="flex justify-end gap-2 mt-4 pt-3 border-t border-border/70">
                 <button
                   type="button"
-                  onClick={() => openEdit(p)}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    openEdit(p);
+                  }}
                   className="inline-flex items-center gap-1 text-xs px-2.5 py-1.5 border border-border rounded hover:border-primary text-gray-700"
                 >
                   <FiEdit2 size={12} /> Edit
                 </button>
                 <button
                   type="button"
-                  onClick={() => { setPageError(''); setDeleteTarget(p); }}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setPageError('');
+                    setDeleteTarget(p);
+                  }}
                   className="inline-flex items-center gap-1 text-xs px-2.5 py-1.5 border border-red-400/40 rounded hover:bg-red-500/10 text-red-500"
                 >
                   <FiTrash2 size={12} /> Delete
