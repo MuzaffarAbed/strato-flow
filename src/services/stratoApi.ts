@@ -16,6 +16,7 @@ import type {
   CreateTaskDto,
   UpdateTaskDto,
   TaskFilterParams,
+  User,
   UserDetail,
   CreateUserDto,
   UpdateUserDto,

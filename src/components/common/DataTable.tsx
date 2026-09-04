@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type MouseEvent, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useState, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
 import { FiChevronDown, FiChevronUp } from 'react-icons/fi';
 
 export interface DataTableColumn<T> {
@@ -82,7 +82,7 @@ export default function DataTable<T>({
     [columns, columnWidths],
   );
 
-  const handleResizeStart = useCallback((column: DataTableColumn<T>, event: MouseEvent) => {
+  const handleResizeStart = useCallback((column: DataTableColumn<T>, event: ReactMouseEvent) => {
     event.preventDefault();
     event.stopPropagation();
 
@@ -90,7 +90,7 @@ export default function DataTable<T>({
     const startWidth = columnWidths[column.key] ?? parseWidthPx(column.width);
     const minWidth = column.minWidth ?? 72;
 
-    const onMove = (moveEvent: MouseEvent) => {
+    const onMove = (moveEvent: globalThis.MouseEvent) => {
       const nextWidth = Math.max(minWidth, startWidth + (moveEvent.clientX - startX));
       setColumnWidths((previous) => ({ ...previous, [column.key]: nextWidth }));
     };
